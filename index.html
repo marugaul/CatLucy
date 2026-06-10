@@ -180,7 +180,7 @@ HairChain.prototype.draw = function(c) {
   var r2 = 76, g2 = 29, b2 = 149;
   for (i = 0; i < pts.length - 1; i++) {
     t = i / (pts.length - 1);
-    w = 10 - t * 6;
+    w = 13 - t * 7;
     r = Math.round(r1 + (r2 - r1) * t);
     g = Math.round(g1 + (g2 - g1) * t);
     b = Math.round(b1 + (b2 - b1) * t);
@@ -296,8 +296,8 @@ function Lucy() {
   this.breathe = 0;
   this.isMoving = false;
   this.windX = 0;
-  this.leftBraid = new HairChain(14, 11);
-  this.rightBraid = new HairChain(14, 11);
+  this.leftBraid = new HairChain(18, 12);
+  this.rightBraid = new HairChain(18, 12);
 }
 
 Lucy.prototype.update = function(keys) {
@@ -316,12 +316,12 @@ Lucy.prototype.update = function(keys) {
   }
 
   this.breathe += 0.05;
-  this.x = Math.max(30, Math.min(890, this.x));
+  // No clamp here — scene-edge detection handles transitions
 
-  // Hair anchors: top of head
-  var headY = this.y - 115;
-  this.leftBraid.update(this.x - 14, headY, this.windX);
-  this.rightBraid.update(this.x + 14, headY, this.windX);
+  // Hair anchors: sides of head (wide spread so braids are visible)
+  var headY = this.y - 100;
+  this.leftBraid.update(this.x - 28, headY, this.windX);
+  this.rightBraid.update(this.x + 28, headY, this.windX);
 };
 
 Lucy.prototype.draw = function(c) {
@@ -330,9 +330,15 @@ Lucy.prototype.draw = function(c) {
   var bob = Math.sin(this.breathe) * 2;
   var walkSin = Math.sin(this.walkFrame);
 
-  // Draw hair chains BEHIND body (in world space)
+  // Draw hair chains BEHIND body (in world space, absolute coords)
   this.leftBraid.draw(c);
   this.rightBraid.draw(c);
+  // Hair tie decorations at braid anchor points
+  var hy0 = y - 100 + bob;
+  c.fillStyle = '#c084fc';
+  c.beginPath(); c.arc(x - 28, hy0, 7, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#fde047';
+  c.beginPath(); c.arc(x + 28, hy0, 7, 0, Math.PI * 2); c.fill();
 
   c.save();
   c.translate(x, y + bob);
@@ -1236,6 +1242,44 @@ function drawSceneItems(sceneIdx, t) {
 }
 
 // ============================================================
+// EXIT ARROWS — Show player which way to leave a scene
+// ============================================================
+var NEXT_SCENE_LABELS = ['', '🌳 Parque', '🏪 Super', '🍎 Frutería', '🍭 Dulcería', '🏫 Escuela'];
+var PREV_SCENE_LABELS = ['', '🏠 Casa', '🌳 Parque', '🏪 Super', '🍎 Frutería', '🍭 Dulcería'];
+
+function drawExitArrows() {
+  var pulse = 0.65 + Math.sin(globalTime * 0.08) * 0.25;
+  ctx.save();
+  ctx.globalAlpha = pulse;
+
+  // Right arrow (next scene)
+  if (currentScene < 5) {
+    ctx.fillStyle = '#fde047';
+    ctx.font = 'bold 28px serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('▶▶', 895, 410);
+    ctx.fillStyle = 'rgba(15,10,40,0.75)';
+    ctx.beginPath(); ctx.roundRect(840, 420, 76, 28, 8); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 12px Segoe UI';
+    ctx.fillText(NEXT_SCENE_LABELS[currentScene + 1] || '', 878, 438);
+  }
+
+  // Left arrow (previous scene)
+  if (currentScene > 0) {
+    ctx.fillStyle = '#fde047';
+    ctx.font = 'bold 28px serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('◀◀', 25, 410);
+    ctx.fillStyle = 'rgba(15,10,40,0.75)';
+    ctx.beginPath(); ctx.roundRect(4, 420, 76, 28, 8); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 12px Segoe UI';
+    ctx.fillText(PREV_SCENE_LABELS[currentScene] || '', 42, 438);
+  }
+
+  ctx.restore();
+}
+
+// ============================================================
 // UI
 // ============================================================
 function drawUI() {
@@ -1458,13 +1502,17 @@ function update(dt) {
 
   lucy.update(keys);
 
-  // Scene edge detection
-  if (lucy.x > 895 && currentScene < 5) {
+  // Scene edge detection — fire before any clamp
+  if (lucy.x > 860 && currentScene < 5) {
     startTransition(currentScene + 1);
-    lucy.x = 50;
-  } else if (lucy.x < 25 && currentScene > 0) {
+    lucy.x = 80;
+  } else if (lucy.x < 60 && currentScene > 0) {
     startTransition(currentScene - 1);
-    lucy.x = 870;
+    lucy.x = 840;
+  } else {
+    // Soft clamp only when not at an edge
+    if (lucy.x < 0)   lucy.x = 0;
+    if (lucy.x > 920) lucy.x = 920;
   }
 
   if (sceneNameTimer > 0) sceneNameTimer--;
@@ -1496,7 +1544,11 @@ function update(dt) {
   // Feed prompt at home
   if (currentScene === 0 && inventory.length > 0) {
     var distS = Math.hypot(lucy.x - sophia.x, lucy.y - sophia.y);
-    if (distS < 100) tooltip = '🐾 ESPACIO — Dar comida';
+    if (distS < 100) tooltip = '🐾 ESPACIO — Dar comida a Sophia';
+  }
+  // Home hint when inventory empty
+  if (currentScene === 0 && inventory.length === 0 && globalTime < 300) {
+    tooltip = '→ ¡Camina a la derecha para buscar comida!';
   }
 
   // Happy hearts ambient
@@ -1522,6 +1574,9 @@ function draw() {
 
   // Scene collectibles
   if (currentScene > 0) drawSceneItems(currentScene, globalTime);
+
+  // Exit arrows — guide player to leave the scene
+  drawExitArrows();
 
   // Sophia at home
   if (currentScene === 0) sophia.draw(ctx);
@@ -1555,17 +1610,23 @@ function gameLoop(ts) {
   requestAnimationFrame(gameLoop);
 }
 
-// Initialize hair chain positions
+// Initialize hair chains with outward arc so braids are visible from the start
 (function() {
+  var startX = lucy.x, startY = lucy.y - 100;
   for (var i = 0; i < lucy.leftBraid.points.length; i++) {
-    lucy.leftBraid.points[i].x = 460 - 14;
-    lucy.leftBraid.points[i].y = 310 + i * 11;
+    // Arc outward then downward: first half goes left, second half hangs down
+    var t = i / (lucy.leftBraid.points.length - 1);
+    var angle = t * Math.PI * 0.55; // 0 = horizontal left, π/2 = vertical down
+    lucy.leftBraid.points[i].x = startX - 28 - Math.cos(angle) * i * 9;
+    lucy.leftBraid.points[i].y = startY + Math.sin(angle) * i * 9;
     lucy.leftBraid.prevPoints[i].x = lucy.leftBraid.points[i].x;
     lucy.leftBraid.prevPoints[i].y = lucy.leftBraid.points[i].y;
   }
   for (var j = 0; j < lucy.rightBraid.points.length; j++) {
-    lucy.rightBraid.points[j].x = 460 + 14;
-    lucy.rightBraid.points[j].y = 310 + j * 11;
+    var t2 = j / (lucy.rightBraid.points.length - 1);
+    var angle2 = t2 * Math.PI * 0.55;
+    lucy.rightBraid.points[j].x = startX + 28 + Math.cos(angle2) * j * 9;
+    lucy.rightBraid.points[j].y = startY + Math.sin(angle2) * j * 9;
     lucy.rightBraid.prevPoints[j].x = lucy.rightBraid.points[j].x;
     lucy.rightBraid.prevPoints[j].y = lucy.rightBraid.points[j].y;
   }
