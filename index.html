@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>🐱 ¡El Juego de Sophia! — Para Lucy 💕</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: linear-gradient(135deg, #ff9de2 0%, #c7b5ff 50%, #a8edff 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Comic Sans MS', 'Chalkboard SE', cursive;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    #title-screen {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(135deg, #ff9de2, #c7b5ff, #a8edff);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      transition: opacity 0.8s ease;
+    }
+
+    #title-screen h1 {
+      font-size: clamp(2em, 6vw, 3.5em);
+      color: #6b2d8b;
+      text-shadow: 3px 3px 0 rgba(255,255,255,0.8), 6px 6px 0 rgba(155,89,182,0.3);
+      text-align: center;
+      margin-bottom: 10px;
+      animation: bounce 1s infinite alternate;
+    }
+
+    #title-screen h2 {
+      font-size: clamp(1.2em, 3vw, 1.8em);
+      color: #e84393;
+      text-shadow: 2px 2px 0 rgba(255,255,255,0.7);
+      margin-bottom: 30px;
+    }
+
+    #title-screen .cat-preview {
+      font-size: clamp(4em, 12vw, 7em);
+      animation: spin-slow 3s infinite linear;
+      margin-bottom: 20px;
+    }
+
+    #start-btn {
+      background: linear-gradient(135deg, #fd79a8, #e84393);
+      color: white;
+      border: none;
+      padding: 18px 45px;
+      font-size: 1.5em;
+      font-family: inherit;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(232,67,147,0.5);
+      transition: transform 0.15s, box-shadow 0.15s;
+      animation: pulse-btn 1.5s infinite;
+    }
+
+    #start-btn:hover { transform: scale(1.08); }
+    #start-btn:active { transform: scale(0.95); }
+
+    #game-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
+
+    #game-title {
+      color: #6b2d8b;
+      font-size: clamp(1.4em, 3.5vw, 2.2em);
+      text-shadow: 2px 2px 0 rgba(255,255,255,0.8);
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+    }
+
+    #gameCanvas {
+      border: 5px solid #9b59b6;
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(155,89,182,0.4), 0 0 0 3px #ff9de2;
+      display: block;
+      max-width: 100vw;
+      cursor: pointer;
+      touch-action: none;
+    }
+
+    #info-bar {
+      display: flex;
+      gap: 15px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .info-chip {
+      background: rgba(255,255,255,0.85);
+      padding: 6px 18px;
+      border-radius: 50px;
+      border: 3px solid #9b59b6;
+      font-size: clamp(0.9em, 2.5vw, 1.1em);
+      color: #6b2d8b;
+      font-weight: bold;
+    }
+
+    #instructions {
+      margin-top: 8px;
+      color: #6b2d8b;
+      font-size: clamp(0.75em, 2vw, 0.95em);
+      text-align: center;
+      text-shadow: 1px 1px 0 rgba(255,255,255,0.6);
+    }
+
+    @keyframes bounce {
+      from { transform: translateY(0); }
+      to { transform: translateY(-12px); }
+    }
+
+    @keyframes spin-slow {
+      from { transform: rotate(-8deg) scale(1); }
+      to { transform: rotate(8deg) scale(1.05); }
+    }
+
+    @keyframes pulse-btn {
+      0%, 100% { box-shadow: 0 6px 20px rgba(232,67,147,0.5); }
+      50% { box-shadow: 0 6px 30px rgba(232,67,147,0.9); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TITLE SCREEN -->
+<div id="title-screen">
+  <div class="cat-preview">🐱</div>
+  <h1>¡El Juego de Sophia!</h1>
+  <h2>💕 Una aventura para Lucy 💕</h2>
+  <button id="start-btn" onclick="startGame()">¡Jugar ahora! ▶</button>
+</div>
+
+<!-- GAME -->
+<div id="game-wrapper">
+  <h1 id="game-title">🐱 ¡Alimenta a Sophia! 🌟</h1>
+  <canvas id="gameCanvas" width="920" height="560"></canvas>
+  <div id="info-bar">
+    <div class="info-chip">⭐ Puntos: <span id="scoreVal">0</span></div>
+    <div class="info-chip">❤️ Felicidad: <span id="happyVal">50</span>%</div>
+    <div class="info-chip">🐾 Sophia — 1 añito</div>
+  </div>
+  <div id="instructions">
+    👆 Arrastra la comida 🐟🥛🍖🧁 hasta Sophia para alimentarla • ¡Mamá Gatita la cuida mucho!
+  </div>
+</div>
+
+<script>
+// =====================================================
+//  SOPHIA — El juego de Lucy
+//  Canvas 920 × 560
+// =====================================================
+
+const canvas = document.getElementById('gameCanvas');
+const ctx    = canvas.getContext('2d');
+const W = 920, H = 560;
+
+// ---- roundRect polyfill ----
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    this.beginPath();
+    this.moveTo(x + r, y);
+    this.lineTo(x + w - r, y);
+    this.quadraticCurveTo(x + w, y, x + w, y + r);
+    this.lineTo(x + w, y + h - r);
+    this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    this.lineTo(x + r, y + h);
+    this.quadraticCurveTo(x, y + h, x, y + h - r);
+    this.lineTo(x, y + r);
+    this.quadraticCurveTo(x, y, x + r, y);
+    this.closePath();
+    return this;
+  };
+}
+
+// ---- Audio (optional meow sounds) ----
+let audioCtx;
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+function playMeow() {
+  try {
+    ensureAudio();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(900, audioCtx.currentTime + 0.12);
+    osc.frequency.exponentialRampToValueAtTime(500, audioCtx.currentTime + 0.28);
+    gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.36);
+  } catch(e){}
+}
+function playChime() {
+  try {
+    ensureAudio();
+    [523, 659, 784].forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.12, audioCtx.currentTime + i * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i * 0.12 + 0.3);
+      osc.start(audioCtx.currentTime + i * 0.12);
+      osc.stop(audioCtx.currentTime + i * 0.12 + 0.31);
+    });
+  } catch(e){}
+}
+function playPurr() {
+  try {
+    ensureAudio();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.type = 'sawtooth';
+    osc.frequency.value = 28;
+    gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+    osc.start(); osc.stop(audioCtx.currentTime + 1.21);
+  } catch(e){}
+}
+
+// ---- State ----
+let score     = 0;
+let happiness = 50;
+let frame     = 0;
+let eatTimer  = 0;
+let particles = [];
+let floatMsgs = [];
+let mamaEmoteTimer = 0;
+let celebTimer = 0;
+let feedCount = 0;
+
+// Mouse / Touch
+let mouseX = 0, mouseY = 0;
+let isDragging = false;
+let draggedFood = null;
+let dragX = 0, dragY = 0;
+let hoverFood = null;
+
+// Sophia position
+const SOPHIA = { x: 340, y: 360 };
+const LUCY   = { x: 680, y: 320 };
+const MAMA   = { x: 120, y: 340 };
+
+// Food items (will be refreshed after all used)
+const FOOD_BASE = [
+  { id:0, name:'Pescado',  icon:'🐟', bx:620, by:400, color:'#81ecec' },
+  { id:1, name:'Leche',    icon:'🥛', bx:700, by:400, color:'#ffeaa7' },
+  { id:2, name:'Pollo',    icon:'🍗', bx:620, by:460, color:'#fab1a0' },
+  { id:3, name:'Pastelito',icon:'🧁', bx:700, by:460, color:'#fd79a8' },
+];
+
+let foods = makeFoods();
+function makeFoods() {
+  return FOOD_BASE.map(f => ({ ...f, x:f.bx, y:f.by, used:false }));
+}
+
+// =====================================================
+//  DRAW BACKGROUND
+// =====================================================
+function drawBackground() {
+  // Sky
+  const sky = ctx.createLinearGradient(0, 0, 0, H * 0.62);
+  sky.addColorStop(0,   '#74b9ff');
+  sky.addColorStop(0.6, '#a8edff');
+  sky.addColorStop(1,   '#c7ecee');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, H * 0.62);
+
+  // Clouds
+  drawCloud(100, 70,  1.0);
+  drawCloud(320, 40,  0.75);
+  drawCloud(560, 80,  1.1);
+  drawCloud(760, 55,  0.85);
+
+  // Sun
+  ctx.fillStyle = '#ffeaa7';
+  ctx.shadowBlur = 30; ctx.shadowColor = '#fdcb6e';
+  ctx.beginPath(); ctx.arc(W - 80, 60, 38, 0, Math.PI*2); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#fdcb6e';
+  for(let i=0;i<8;i++){
+    const a = (i/8)*Math.PI*2;
+    ctx.beginPath();
+    ctx.moveTo(W-80+Math.cos(a)*42, 60+Math.sin(a)*42);
+    ctx.lineTo(W-80+Math.cos(a)*58, 60+Math.sin(a)*58);
+    ctx.lineWidth = 4; ctx.strokeStyle='#fdcb6e'; ctx.stroke();
+  }
+
+  // Ground / grass
+  const grass = ctx.createLinearGradient(0, H*0.62, 0, H);
+  grass.addColorStop(0, '#55efc4');
+  grass.addColorStop(0.3, '#00b894');
+  grass.addColorStop(1, '#00876a');
+  ctx.fillStyle = grass;
+  ctx.fillRect(0, H*0.62, W, H*(1-0.62));
+
+  // Grass bumps
+  ctx.fillStyle = '#00b894';
+  ctx.beginPath();
+  ctx.moveTo(0, H*0.62);
+  for(let gx=0; gx<=W; gx+=20){
+    ctx.lineTo(gx, H*0.62 - 8*Math.sin(gx*0.07 + Math.sin(frame*0.002)*0.5));
+  }
+  ctx.lineTo(W, H*0.62); ctx.closePath(); ctx.fill();
+
+  // House
+  drawHouse(30, 190);
+
+  // Flowers
+  const flowerPositions = [240, 330, 450, 520, 600, 750, 830];
+  flowerPositions.forEach((fx,i) => drawFlower(fx, H*0.62 - 5, i));
+
+  // Carpet / mat under Sophia
+  ctx.fillStyle = 'rgba(253,121,168,0.3)';
+  ctx.strokeStyle = '#fd79a8';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.roundRect(SOPHIA.x - 65, SOPHIA.y + 42, 130, 28, 12);
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#e84393';
+  ctx.font = 'bold 13px Comic Sans MS';
+  ctx.textAlign = 'center';
+  ctx.fillText('✨ Sophia ✨', SOPHIA.x, SOPHIA.y + 62);
+}
+
+function drawCloud(x, y, scale) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+  ctx.fillStyle = 'rgba(255,255,255,0.88)';
+  ctx.beginPath();
+  ctx.arc(0, 0, 30, 0, Math.PI*2);
+  ctx.arc(35, -8, 38, 0, Math.PI*2);
+  ctx.arc(72, 4, 26, 0, Math.PI*2);
+  ctx.arc(45, 14, 30, 0, Math.PI*2);
+  ctx.arc(8, 14, 26, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawHouse(x, y) {
+  // Body
+  ctx.fillStyle = '#ffeaa7'; ctx.strokeStyle = '#fdcb6e'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.roundRect(x, y, 145, 120, 5); ctx.fill(); ctx.stroke();
+
+  // Roof
+  ctx.fillStyle = '#e17055'; ctx.strokeStyle = '#d63031'; ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(x-12, y); ctx.lineTo(x+72, y-58); ctx.lineTo(x+157, y); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+
+  // Chimney
+  ctx.fillStyle = '#e17055';
+  ctx.fillRect(x+100, y-68, 22, 38);
+  ctx.fillStyle = '#636e72';
+  const smokeX = x + 111;
+  ctx.font = '16px Arial';
+  ctx.fillText('〰', smokeX - 10, y - 72 - ((frame*0.5)%20));
+
+  // Door
+  ctx.fillStyle = '#74b9ff'; ctx.strokeStyle = '#0984e3'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(x+52, y+56, 40, 64, [6,6,0,0]); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#ffeaa7';
+  ctx.beginPath(); ctx.arc(x+79, y+88, 4, 0, Math.PI*2); ctx.fill();
+
+  // Windows
+  [[x+10,y+22],[x+95,y+22]].forEach(([wx,wy]) => {
+    ctx.fillStyle='#81ecec'; ctx.strokeStyle='#00cec9'; ctx.lineWidth=2;
+    ctx.fillRect(wx,wy,38,38); ctx.strokeRect(wx,wy,38,38);
+    ctx.beginPath();
+    ctx.moveTo(wx+19,wy); ctx.lineTo(wx+19,wy+38);
+    ctx.moveTo(wx,wy+19); ctx.lineTo(wx+38,wy+19);
+    ctx.stroke();
+  });
+}
+
+function drawFlower(x, y, idx) {
+  const colors = ['#ff7675','#fd79a8','#e84393','#fdcb6e','#6c5ce7','#a29bfe','#00cec9'];
+  const h2 = 22 + Math.sin(frame*0.02+idx) * 3;
+  ctx.save(); ctx.translate(x, y);
+
+  ctx.strokeStyle = '#00b894'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-h2); ctx.stroke();
+
+  ctx.fillStyle = colors[idx % colors.length];
+  for(let p=0;p<5;p++){
+    ctx.save();
+    ctx.rotate((p/5)*Math.PI*2 + frame*0.005);
+    ctx.beginPath(); ctx.ellipse(0,-h2-7,5,9,0,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+  ctx.fillStyle = '#ffeaa7';
+  ctx.beginPath(); ctx.arc(0,-h2,7,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+// =====================================================
+//  DRAW SOPHIA THE KITTEN (black & white, 1 year old)
+// =====================================================
+function drawSophia(ox, oy, mood) {
+  ctx.save(); ctx.translate(ox, oy);
+
+  const bob   = Math.sin(frame * 0.055) * 2.5;
+  const isEat = mood === 'eating';
+  const isHap = mood === 'happy';
+
+  if (isEat) ctx.rotate(0.07);
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.beginPath(); ctx.ellipse(0,46,42,12,0,0,Math.PI*2); ctx.fill();
+
+  // Tail (behind body)
+  const tw = Math.sin(frame * 0.09) * 22;
+  ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 9; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-22, 20);
+  ctx.quadraticCurveTo(-62+tw, 0, -74+tw*0.5, -32);
+  ctx.stroke();
+  // White tail tip
+  ctx.strokeStyle = '#e8e8e8'; ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(-66+tw*0.45, -18);
+  ctx.quadraticCurveTo(-72+tw*0.5, -26, -74+tw*0.5, -32);
+  ctx.stroke();
+
+  // Body
+  ctx.fillStyle = '#141414';
+  ctx.beginPath(); ctx.ellipse(0, bob, 33, 40, 0, 0, Math.PI*2); ctx.fill();
+
+  // White belly
+  ctx.fillStyle = '#f2f2f2';
+  ctx.beginPath(); ctx.ellipse(0, 10+bob, 19, 24, 0, 0, Math.PI*2); ctx.fill();
+
+  // Paws
+  [[-16,42],[16,42]].forEach(([px,py],i) => {
+    ctx.fillStyle = '#141414';
+    ctx.beginPath(); ctx.ellipse(px, py+bob, 11, 8, i?0.3:-0.3, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#d8d8d8';
+    ctx.beginPath(); ctx.ellipse(px, py+bob+2, 8, 5, i?0.3:-0.3, 0, Math.PI*2); ctx.fill();
+  });
+
+  // HEAD
+  const hy = -44 + bob;
+
+  // Head base
+  ctx.fillStyle = '#141414';
+  ctx.beginPath(); ctx.arc(0, hy, 29, 0, Math.PI*2); ctx.fill();
+
+  // White muzzle patch
+  ctx.fillStyle = '#efefef';
+  ctx.beginPath(); ctx.ellipse(0, hy+6, 19, 17, 0, 0, Math.PI*2); ctx.fill();
+
+  // Ears
+  ctx.fillStyle = '#141414';
+  [[-1,1],[1,-1]].forEach(([side],_i) => {
+    const ex = side * 21;
+    ctx.beginPath();
+    ctx.moveTo(ex, hy-15);
+    ctx.lineTo(ex + side*12, hy-44);
+    ctx.lineTo(side*5, hy-22);
+    ctx.closePath(); ctx.fill();
+    // Inner ear
+    ctx.fillStyle = '#ffb3c6';
+    ctx.beginPath();
+    ctx.moveTo(ex, hy-17);
+    ctx.lineTo(ex+side*8, hy-38);
+    ctx.lineTo(side*7, hy-23);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#141414';
+  });
+
+  // Eyes
+  const blink = Math.sin(frame*0.018) > 0.97 ? 1 : 7;
+  if (isHap) {
+    // Closed happy eyes
+    ctx.strokeStyle = '#2d3436'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(-9, hy-1, 6, Math.PI, 0); ctx.stroke();
+    ctx.beginPath(); ctx.arc(9, hy-1, 6, Math.PI, 0); ctx.stroke();
+  } else {
+    ctx.fillStyle = '#2d9e5f'; // green eyes
+    ctx.beginPath(); ctx.ellipse(-9, hy-1, 7, blink, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(9, hy-1, 7, blink, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#0a0a0a';
+    ctx.beginPath(); ctx.ellipse(-9, hy-1, 3, blink*0.8, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(9, hy-1, 3, blink*0.8, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'white';
+    ctx.beginPath(); ctx.arc(-6, hy-4, 2, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(12, hy-4, 2, 0, Math.PI*2); ctx.fill();
+  }
+
+  // Nose
+  ctx.fillStyle = '#ff7675';
+  ctx.beginPath(); ctx.moveTo(0,hy+9); ctx.lineTo(-4,hy+14); ctx.lineTo(4,hy+14); ctx.closePath(); ctx.fill();
+
+  // Mouth / eating
+  if (isEat) {
+    ctx.fillStyle = '#e84393';
+    ctx.beginPath(); ctx.arc(0, hy+17, 8, 0, Math.PI); ctx.fill();
+    ctx.fillStyle = '#ff7675';
+    ctx.beginPath(); ctx.ellipse(0, hy+22, 5, 4, 0, 0, Math.PI); ctx.fill();
+  } else {
+    ctx.strokeStyle = '#636e72'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-6,hy+17); ctx.quadraticCurveTo(0,hy+22,6,hy+17); ctx.stroke();
+  }
+
+  // Whiskers
+  ctx.strokeStyle = 'rgba(50,50,50,0.45)'; ctx.lineWidth = 1.5;
+  [[-9,10,-30,7],[-9,13,-30,13],[-9,16,-30,19],
+   [9,10,30,7],[9,13,30,13],[9,16,30,19]].forEach(([x1,y1,x2,y2]) => {
+    ctx.beginPath(); ctx.moveTo(x1,hy+y1); ctx.lineTo(x2,hy+y2); ctx.stroke();
+  });
+
+  // Collar (pink with bell)
+  ctx.fillStyle = '#fd79a8'; ctx.strokeStyle = '#e84393'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(-21,hy+23,42,9,4); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#ffeaa7'; ctx.strokeStyle = '#fdcb6e'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(0,hy+32,5,0,Math.PI*2); ctx.fill(); ctx.stroke();
+
+  // Age badge
+  ctx.fillStyle = '#6c5ce7';
+  ctx.font = 'bold 12px Comic Sans MS';
+  ctx.textAlign = 'center';
+  ctx.fillText('1 añito 🐾', 0, hy - 44);
+
+  ctx.restore();
+}
+
+// =====================================================
+//  DRAW LUCY THE GIRL
+// =====================================================
+function drawLucy(ox, oy) {
+  ctx.save(); ctx.translate(ox, oy);
+
+  const breathe = Math.sin(frame * 0.04) * 1.2;
+  const wave    = Math.sin(frame * 0.06) * 8;
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.1)';
+  ctx.beginPath(); ctx.ellipse(0,75,32,9,0,0,Math.PI*2); ctx.fill();
+
+  // Legs
+  ctx.fillStyle = '#fab1a0';
+  ctx.fillRect(-18,48,14,36); ctx.fillRect(4,48,14,36);
+
+  // Shoes
+  ctx.fillStyle = '#e17055';
+  ctx.beginPath(); ctx.ellipse(-11,84,12,8,0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(11,84,12,8,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = '10px Arial';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('✨',-11,84); ctx.fillText('✨',11,84);
+
+  // Dress (trapezoid)
+  ctx.fillStyle = '#fd79a8';
+  ctx.beginPath();
+  ctx.moveTo(-18, 2+breathe); ctx.lineTo(18, 2+breathe);
+  ctx.lineTo(32, 52); ctx.lineTo(-32, 52); ctx.closePath(); ctx.fill();
+
+  // Dress pattern (stars)
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  [[0,15],[12,28],[-10,35],[8,42]].forEach(([sx,sy])=>{
+    ctx.font='10px Arial'; ctx.fillText('⭐',sx,sy+breathe);
+  });
+
+  // Dress collar / top
+  ctx.fillStyle = '#e84393';
+  ctx.beginPath(); ctx.roundRect(-16,2,32,14,6); ctx.fill();
+
+  // Bow
+  ctx.fillStyle = '#a29bfe';
+  [[-7,-4],[7,-4]].forEach(([bx,by])=>{
+    ctx.beginPath(); ctx.moveTo(bx,by+breathe); ctx.quadraticCurveTo(bx<0?-16:-16+23,-12+breathe,bx<0?-13:-13+23,by+breathe); ctx.closePath(); ctx.fill();
+  });
+  ctx.fillStyle = '#6c5ce7';
+  ctx.beginPath(); ctx.arc(0,-2+breathe,4,0,Math.PI*2); ctx.fill();
+
+  // Left arm (waving with food maybe)
+  ctx.fillStyle = '#fab1a0';
+  ctx.save(); ctx.translate(-24,12+breathe); ctx.rotate(-0.4 + Math.sin(frame*0.04)*0.15);
+  ctx.beginPath(); ctx.roundRect(-5,0,10,32,5); ctx.fill();
+  ctx.restore();
+
+  // Right arm (raised, waving)
+  ctx.save(); ctx.translate(24,12+breathe); ctx.rotate(0.4 + wave*0.01);
+  ctx.beginPath(); ctx.roundRect(-5,-8,10,32,5);
+  ctx.fillStyle = '#fab1a0'; ctx.fill();
+  ctx.font='20px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('👋',0,-12);
+  ctx.restore();
+
+  // Head
+  ctx.fillStyle = '#fab1a0';
+  ctx.beginPath(); ctx.arc(0,-32+breathe,27,0,Math.PI*2); ctx.fill();
+
+  // Hair base (brown)
+  ctx.fillStyle = '#795548';
+  ctx.beginPath(); ctx.arc(0,-40+breathe,28,Math.PI,0); ctx.fill();
+  ctx.beginPath(); ctx.arc(0,-32+breathe,29,-Math.PI,-Math.PI*0.08); ctx.fill();
+
+  // Pigtails
+  ctx.fillStyle = '#795548';
+  ctx.beginPath(); ctx.arc(-32,-32+breathe,13,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(32,-32+breathe,13,0,Math.PI*2); ctx.fill();
+
+  // Hair ties
+  ctx.fillStyle = '#fd79a8';
+  ctx.beginPath(); ctx.arc(-32,-32+breathe,8,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(32,-32+breathe,8,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.font='9px Arial';
+  ctx.fillText('♥',-32,-32+breathe); ctx.fillText('♥',32,-32+breathe);
+
+  // Eyes
+  ctx.fillStyle = '#3d2b1f';
+  ctx.beginPath(); ctx.arc(-9,-34+breathe,4.5,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(9,-34+breathe,4.5,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='white';
+  ctx.beginPath(); ctx.arc(-7,-36+breathe,1.8,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(11,-36+breathe,1.8,0,Math.PI*2); ctx.fill();
+
+  // Smile
+  ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.arc(0,-26+breathe,11,0.1,Math.PI-0.1); ctx.stroke();
+
+  // Rosy cheeks
+  ctx.fillStyle = 'rgba(255,120,120,0.38)';
+  ctx.beginPath(); ctx.ellipse(-16,-28+breathe,9,6,0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(16,-28+breathe,9,6,0,0,Math.PI*2); ctx.fill();
+
+  // Name tag
+  ctx.fillStyle = '#6b2d8b';
+  ctx.font = 'bold 18px Comic Sans MS';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.strokeStyle='white'; ctx.lineWidth=4;
+  ctx.strokeText('¡Lucy!', 0, -68+breathe);
+  ctx.fillText('¡Lucy!', 0, -68+breathe);
+
+  ctx.restore();
+}
+
+// =====================================================
+//  DRAW MAMA CAT (bigger, elegant, protective)
+// =====================================================
+function drawMamaCat(ox, oy) {
+  ctx.save(); ctx.translate(ox, oy);
+
+  const breathe = Math.sin(frame * 0.03 + 1.5) * 2;
+  const tw = Math.sin(frame * 0.065 + 1) * 18;
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.beginPath(); ctx.ellipse(0,58,50,14,0,0,Math.PI*2); ctx.fill();
+
+  // Tail
+  ctx.strokeStyle = '#1e1e1e'; ctx.lineWidth = 11; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(28,26); ctx.quadraticCurveTo(65+tw,4,76+tw*0.5,-34); ctx.stroke();
+  ctx.strokeStyle = '#e0e0e0'; ctx.lineWidth = 7;
+  ctx.beginPath();
+  ctx.moveTo(68+tw*0.4,-16); ctx.quadraticCurveTo(74+tw*0.5,-26,76+tw*0.5,-34); ctx.stroke();
+
+  // Body (black with white areas)
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath(); ctx.ellipse(0,breathe,40,52,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#eeeeee';
+  ctx.beginPath(); ctx.ellipse(0,12+breathe,24,32,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#f8f8f8';
+  ctx.beginPath(); ctx.ellipse(0,-4+breathe,16,20,0,0,Math.PI*2); ctx.fill();
+
+  // Paws
+  [[-20,52],[20,52]].forEach(([px,py],i)=>{
+    ctx.fillStyle='#1a1a1a';
+    ctx.beginPath(); ctx.ellipse(px,py+breathe,13,10,i?0.3:-0.3,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#d4d4d4';
+    ctx.beginPath(); ctx.ellipse(px,py+breathe+3,9,7,i?0.3:-0.3,0,Math.PI*2); ctx.fill();
+  });
+
+  // HEAD
+  const hy = -58 + breathe;
+
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath(); ctx.arc(0,hy,34,0,Math.PI*2); ctx.fill();
+
+  // White face
+  ctx.fillStyle = '#eeeeee';
+  ctx.beginPath(); ctx.ellipse(0,hy+7,21,20,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#f8f8f8';
+  ctx.beginPath(); ctx.ellipse(0,hy+2,14,12,0,0,Math.PI*2); ctx.fill();
+
+  // Ears
+  ctx.fillStyle = '#1a1a1a';
+  [[-1,1],[1,-1]].forEach(([s]) => {
+    const ex = s*23;
+    ctx.beginPath();
+    ctx.moveTo(ex,hy-20); ctx.lineTo(ex+s*13,hy-55); ctx.lineTo(s*6,hy-25); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffb3c6';
+    ctx.beginPath();
+    ctx.moveTo(ex,hy-22); ctx.lineTo(ex+s*9,hy-48); ctx.lineTo(s*8,hy-26); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#1a1a1a';
+  });
+
+  // Eyes (blue, more mature/expressive)
+  ctx.fillStyle = '#0984e3';
+  ctx.beginPath(); ctx.ellipse(-12,hy,8.5,8,0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(12,hy,8.5,8,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#0a0a0a';
+  ctx.beginPath(); ctx.ellipse(-12,hy,4,7,0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(12,hy,4,7,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='white';
+  ctx.beginPath(); ctx.arc(-9,hy-3,2.5,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(15,hy-3,2.5,0,Math.PI*2); ctx.fill();
+
+  // Nose
+  ctx.fillStyle = '#ff7675';
+  ctx.beginPath(); ctx.moveTo(0,hy+10); ctx.lineTo(-5,hy+16); ctx.lineTo(5,hy+16); ctx.closePath(); ctx.fill();
+
+  // Smile (gentle)
+  ctx.strokeStyle = '#636e72'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(-7,hy+18); ctx.quadraticCurveTo(0,hy+24,7,hy+18); ctx.stroke();
+
+  // Whiskers
+  ctx.strokeStyle='rgba(50,50,50,0.4)'; ctx.lineWidth=1.5;
+  [[-10,11,-35,8],[-10,14,-35,14],[-10,17,-35,20],
+   [10,11,35,8],[10,14,35,14],[10,17,35,20]].forEach(([x1,y1,x2,y2])=>{
+    ctx.beginPath(); ctx.moveTo(x1,hy+y1); ctx.lineTo(x2,hy+y2); ctx.stroke();
+  });
+
+  // Collar (red/elegant)
+  ctx.fillStyle = '#e17055'; ctx.strokeStyle='#d63031'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.roundRect(-24,hy+24,48,11,5); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#ffeaa7'; ctx.strokeStyle='#fdcb6e'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(0,hy+36,7,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#636e72'; ctx.font='8px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('♪',0,hy+36);
+
+  // Mama tag
+  ctx.fillStyle = '#e17055';
+  ctx.font = 'bold 16px Comic Sans MS';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.strokeStyle='white'; ctx.lineWidth=4;
+  ctx.strokeText('¡Mamá Gatita!', 0, hy-62);
+  ctx.fillText('¡Mamá Gatita!', 0, hy-62);
+
+  ctx.restore();
+}
+
+// =====================================================
+//  FOOD PANEL
+// =====================================================
+function drawFoodPanel() {
+  // Panel
+  ctx.fillStyle = 'rgba(255,255,255,0.88)';
+  ctx.strokeStyle = '#fd79a8';
+  ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.roundRect(578,338,290,182,22); ctx.fill(); ctx.stroke();
+
+  ctx.fillStyle = '#6b2d8b';
+  ctx.font = 'bold 17px Comic Sans MS';
+  ctx.textAlign = 'center';
+  ctx.fillText('¡Dale comida a Sophia!', 723, 364);
+
+  foods.forEach(food => {
+    if (food.used) return;
+    const isHov = hoverFood && hoverFood.id === food.id;
+    const scale = isHov ? 1.15 : 1;
+
+    ctx.save();
+    ctx.translate(food.x, food.y);
+    ctx.scale(scale, scale);
+
+    ctx.fillStyle = food.color;
+    ctx.strokeStyle = isHov ? '#6b2d8b' : 'rgba(0,0,0,0.12)';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(0,0,30,0,Math.PI*2); ctx.fill(); ctx.stroke();
+
+    ctx.font = '28px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(food.icon, 0, 0);
+
+    ctx.fillStyle = '#2d3436';
+    ctx.font = 'bold 12px Comic Sans MS';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(food.name, 0, 42);
+
+    ctx.restore();
+  });
+
+  // Check if all used → show refresh hint
+  if (foods.every(f=>f.used)) {
+    ctx.fillStyle = '#e84393';
+    ctx.font = 'bold 16px Comic Sans MS';
+    ctx.textAlign = 'center';
+    ctx.fillText('¡Recargando comida...', 723, 430);
+  }
+}
+
+// =====================================================
+//  PARTICLES & FLOATING MESSAGES
+// =====================================================
+function addParticles(x, y, type, count=8) {
+  for (let i=0; i<count; i++) {
+    particles.push({
+      x, y,
+      vx: (Math.random()-0.5)*6,
+      vy: -(Math.random()*5+2),
+      life: 1,
+      type,
+      size: Math.random()*16+10,
+    });
+  }
+}
+
+function updateParticles() {
+  particles = particles.filter(p=>p.life>0);
+  particles.forEach(p=>{
+    p.x+=p.vx; p.y+=p.vy; p.vy+=0.12; p.life-=0.022;
+    ctx.save(); ctx.globalAlpha=p.life;
+    ctx.font=`${p.size}px Arial`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    if (p.type==='heart')   ctx.fillText('❤️',p.x,p.y);
+    else if (p.type==='star') ctx.fillText('⭐',p.x,p.y);
+    else if (p.type==='spark')ctx.fillText('✨',p.x,p.y);
+    else if (p.type==='note') ctx.fillText('🎵',p.x,p.y);
+    ctx.restore();
+  });
+}
+
+function addMsg(text, x, y, color='#6b2d8b') {
+  floatMsgs.push({ text, x, y, life:1, vy:-1.4, color });
+}
+
+function updateMsgs() {
+  floatMsgs = floatMsgs.filter(m=>m.life>0);
+  floatMsgs.forEach(m=>{
+    m.y+=m.vy; m.life-=0.014;
+    ctx.save(); ctx.globalAlpha=m.life;
+    ctx.font='bold 22px Comic Sans MS'; ctx.textAlign='center';
+    ctx.strokeStyle='white'; ctx.lineWidth=5;
+    ctx.strokeText(m.text,m.x,m.y);
+    ctx.fillStyle=m.color;
+    ctx.fillText(m.text,m.x,m.y);
+    ctx.restore();
+  });
+}
+
+// =====================================================
+//  HAPPINESS METER & SCORE HUD
+// =====================================================
+function drawHUD() {
+  // Happiness bar
+  ctx.fillStyle='rgba(255,255,255,0.88)';
+  ctx.strokeStyle='#fd79a8'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.roundRect(12,12,256,42,18); ctx.fill(); ctx.stroke();
+
+  const bw = Math.min(230,(happiness/100)*230);
+  const bc = happiness>70?'#00b894':happiness>40?'#fdcb6e':'#e17055';
+  ctx.fillStyle=bc;
+  ctx.beginPath(); ctx.roundRect(16,18,bw,30,14); ctx.fill();
+
+  ctx.fillStyle='#2d3436'; ctx.font='bold 14px Comic Sans MS';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(`❤️ Felicidad de Sophia: ${Math.round(happiness)}%`, 140, 33);
+
+  // Score
+  ctx.fillStyle='rgba(255,255,255,0.88)';
+  ctx.strokeStyle='#6c5ce7'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.roundRect(W-190,12,178,42,18); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#6b2d8b'; ctx.font='bold 19px Comic Sans MS';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(`⭐ ${score} puntos`, W-101, 33);
+}
+
+// =====================================================
+//  DRAG FOOD INDICATOR
+// =====================================================
+function drawDraggedFood() {
+  if (!isDragging || !draggedFood) return;
+  ctx.save();
+  ctx.globalAlpha = 0.88;
+  ctx.translate(dragX, dragY);
+
+  ctx.fillStyle=draggedFood.color; ctx.strokeStyle='#6b2d8b'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.arc(0,0,32,0,Math.PI*2); ctx.fill(); ctx.stroke();
+
+  ctx.font='30px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(draggedFood.icon,0,0);
+
+  // Arrow hint toward Sophia
+  const dx = SOPHIA.x - dragX, dy = SOPHIA.y - dragY;
+  const dist = Math.hypot(dx,dy);
+  if (dist > 80) {
+    const ux=dx/dist, uy=dy/dist;
+    ctx.strokeStyle='rgba(232,67,147,0.6)'; ctx.lineWidth=3;
+    ctx.setLineDash([8,5]);
+    ctx.beginPath(); ctx.moveTo(ux*38,uy*38); ctx.lineTo(ux*65,uy*65); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='rgba(232,67,147,0.6)';
+    ctx.font='16px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('➤',ux*72,uy*72);
+  }
+  ctx.restore();
+}
+
+// =====================================================
+//  SOPHIA TARGET INDICATOR (show when dragging)
+// =====================================================
+function drawSophiaTarget() {
+  if (!isDragging) return;
+  const r = 75 + Math.sin(frame*0.2)*5;
+  ctx.save();
+  ctx.strokeStyle='rgba(232,67,147,0.5)';
+  ctx.lineWidth=3; ctx.setLineDash([8,6]);
+  ctx.beginPath(); ctx.arc(SOPHIA.x, SOPHIA.y,r,0,Math.PI*2); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+// =====================================================
+//  CELEBRATE ANIMATION
+// =====================================================
+function drawCelebration() {
+  if (celebTimer <= 0) return;
+  const alpha = Math.min(1, celebTimer / 30);
+  ctx.save(); ctx.globalAlpha = alpha * 0.88;
+  ctx.fillStyle = '#6b2d8b';
+  ctx.font = 'bold 42px Comic Sans MS';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.strokeStyle='white'; ctx.lineWidth=8;
+  const msg = score >= 100 ? '¡Sophia está muy feliz! 🥰' : '¡Muy bien, Lucy! 🌟';
+  ctx.strokeText(msg, W/2, H/2 - 30);
+  ctx.fillText(msg, W/2, H/2 - 30);
+  ctx.restore();
+}
+
+// =====================================================
+//  MAMA CAT EMOTE
+// =====================================================
+function drawMamaEmote() {
+  if (mamaEmoteTimer <= 0) return;
+  const alpha = Math.min(1, mamaEmoteTimer / 20);
+  ctx.save(); ctx.globalAlpha = alpha;
+  ctx.font = '32px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('💕', MAMA.x + 10, MAMA.y - 140);
+  ctx.restore();
+}
+
+// =====================================================
+//  FEED SOPHIA
+// =====================================================
+const SOPHIA_PHRASES = [
+  '¡Nam nam! 😋', '¡Qué rico!', '¡Miau gracias Lucy!',
+  '¡Delicioso! 🐾', '¡Purrrr! ❤️', '¡Otra vez! 🐟',
+  '¡Ñam ñam! 😸', '¡Lucy es la mejor!',
+];
+const MAMA_PHRASES = [
+  '¡Qué buena niña! 💕', '¡Gracias Lucy! 🥰',
+  '¡Cuidas bien a Sophia! 🌟', '¡Bravo! ❤️',
+];
+
+function feedSophia(food) {
+  eatTimer  = 75;
+  happiness = Math.min(100, happiness + 15 + Math.random()*5);
+  score    += 10;
+  feedCount++;
+
+  playMeow();
+
+  // Floating phrase
+  const phrase = SOPHIA_PHRASES[Math.floor(Math.random()*SOPHIA_PHRASES.length)];
+  addMsg(phrase, SOPHIA.x, SOPHIA.y - 90, '#e84393');
+
+  // Particles
+  addParticles(SOPHIA.x, SOPHIA.y - 50, 'heart', 10);
+  addParticles(SOPHIA.x, SOPHIA.y - 30, 'spark', 6);
+
+  food.used = true;
+
+  // Mama reacts
+  setTimeout(()=>{
+    mamaEmoteTimer = 80;
+    addMsg(MAMA_PHRASES[Math.floor(Math.random()*MAMA_PHRASES.length)], MAMA.x, MAMA.y - 150, '#e17055');
+    addParticles(MAMA.x, MAMA.y - 120, 'heart', 6);
+  }, 700);
+
+  // Celebration at milestones
+  if (feedCount % 5 === 0) {
+    setTimeout(()=>{
+      celebTimer = 90;
+      playChime();
+      addParticles(W/2, H/2, 'star', 20);
+      addParticles(W/2, H/2, 'spark', 15);
+    }, 400);
+  }
+
+  // Purr when very happy
+  if (happiness >= 88) {
+    setTimeout(()=>{ playPurr(); }, 300);
+  }
+
+  // Refresh all foods after a delay
+  setTimeout(()=>{
+    foods = makeFoods();
+  }, 3200);
+
+  // Update DOM
+  document.getElementById('scoreVal').textContent = score;
+  document.getElementById('happyVal').textContent = Math.round(happiness);
+}
+
+// =====================================================
+//  INPUT HANDLING
+// =====================================================
+function canvasPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const sx = canvas.width / rect.width;
+  const sy = canvas.height / rect.height;
+  const touch = e.touches ? e.touches[0] : e;
+  return {
+    x: (touch.clientX - rect.left) * sx,
+    y: (touch.clientY - rect.top)  * sy,
+  };
+}
+
+function onDown(e) {
+  const p = canvasPos(e);
+  mouseX = p.x; mouseY = p.y;
+  for (const food of foods) {
+    if (food.used) continue;
+    if (Math.hypot(p.x-food.x, p.y-food.y) < 34) {
+      draggedFood = food;
+      isDragging  = true;
+      dragX = p.x; dragY = p.y;
+      break;
+    }
+  }
+}
+
+function onMove(e) {
+  const p = canvasPos(e);
+  mouseX = p.x; mouseY = p.y;
+  if (isDragging && draggedFood) {
+    dragX = p.x; dragY = p.y;
+  }
+  // Hover detection
+  hoverFood = null;
+  for (const food of foods) {
+    if (!food.used && Math.hypot(p.x-food.x, p.y-food.y) < 34) {
+      hoverFood = food; break;
+    }
+  }
+}
+
+function onUp(e) {
+  const p = canvasPos(e);
+  if (isDragging && draggedFood) {
+    if (Math.hypot(p.x-SOPHIA.x, p.y-SOPHIA.y) < 82) {
+      feedSophia(draggedFood);
+    }
+  }
+  isDragging  = false;
+  draggedFood = null;
+}
+
+canvas.addEventListener('mousedown',  onDown);
+canvas.addEventListener('mousemove',  onMove);
+canvas.addEventListener('mouseup',    onUp);
+canvas.addEventListener('touchstart', e=>{ e.preventDefault(); onDown(e); }, { passive:false });
+canvas.addEventListener('touchmove',  e=>{ e.preventDefault(); onMove(e); }, { passive:false });
+canvas.addEventListener('touchend',   e=>{ e.preventDefault(); onUp(e);   }, { passive:false });
+
+// =====================================================
+//  GAME LOOP
+// =====================================================
+function loop() {
+  ctx.clearRect(0,0,W,H);
+
+  drawBackground();
+  drawSophiaTarget();
+
+  // Mama cat
+  drawMamaCat(MAMA.x, MAMA.y);
+  drawMamaEmote();
+  if (mamaEmoteTimer > 0) mamaEmoteTimer--;
+
+  // Sophia
+  const mood = eatTimer > 0 ? 'eating' : (happiness > 75 ? 'happy' : 'idle');
+  drawSophia(SOPHIA.x, SOPHIA.y, mood);
+  if (eatTimer > 0) eatTimer--;
+
+  // Lucy
+  drawLucy(LUCY.x, LUCY.y);
+
+  // Food panel
+  drawFoodPanel();
+
+  // Drag overlay
+  drawDraggedFood();
+
+  // HUD
+  drawHUD();
+
+  // Effects
+  updateParticles();
+  updateMsgs();
+
+  // Celebration
+  drawCelebration();
+  if (celebTimer > 0) celebTimer--;
+
+  // Happiness slowly decays
+  if (frame % 200 === 0 && happiness > 30) {
+    happiness = Math.max(30, happiness - 1);
+    document.getElementById('happyVal').textContent = Math.round(happiness);
+  }
+
+  // Sophia asks for food hint
+  if (frame % 420 === 0 && eatTimer === 0) {
+    const hints = ['¡Tengo hambre! 🍟','¡Dame comida! 😸','¡Miau! 🐾'];
+    addMsg(hints[Math.floor(Math.random()*hints.length)], SOPHIA.x, SOPHIA.y-90, '#636e72');
+  }
+
+  frame++;
+  requestAnimationFrame(loop);
+}
+
+// =====================================================
+//  START / TITLE
+// =====================================================
+function startGame() {
+  const ts = document.getElementById('title-screen');
+  ts.style.opacity = '0';
+  setTimeout(()=>{ ts.style.display='none'; }, 800);
+}
+
+// Start loop immediately (title screen overlays)
+loop();
+</script>
+</body>
+</html>
